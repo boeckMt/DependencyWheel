@@ -1,0 +1,18 @@
+{
+    "compilerOptions": {
+        "module": "commonjs",
+        "target": "es5",
+        "checkJs": true,
+        "lib": [
+            "es2018",
+            "dom"
+        ]
+    },
+    "exclude": [
+        "node_modules",
+        "**/node_modules/*"
+    ],
+    "include": [
+        "js/**/*"
+    ]
+}

@@ -4,6 +4,7 @@
 <head>
   <title>DependencyWheel: An Interactive Visualization Of Package Dependencies</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv='cache-control' content='no-store'>
   <meta charset="utf-8">
   <style>
     h1,
@@ -58,10 +59,18 @@
         var chart = d3.chart.dependencyWheel();
         d3.json('data/package.json', function (package_json) {
           d3.json('data/package-lock.json', function (package_json_lock) {
-            var data = buildMatrixFromPackageJsonAndLock(package_json, package_json_lock);
-            d3.select('#chart_placeholder')
-              .datum(data)
-              .call(chart);
+            var showDevDeps = false;
+            var data = buildMatrixFromPackageJsonAndLock(package_json, package_json_lock, showDevDeps);
+            if (data) {
+              d3.select('#chart_placeholder')
+                .datum(data)
+                .call(chart);
+            } else {
+              var cont = document.getElementById('chart_placeholder');
+              var child = document.createElement("div");
+              child.appendChild(document.createTextNode("data is undefined maybe there are no dependencies!"));
+              cont.appendChild(child);
+            }
           });
         });
       }
