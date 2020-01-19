@@ -1,33 +1,90 @@
+/**
+ * @typedef {Object} Package
+ * @property {string} name
+ * @property {string} version 
+ * @property {Object.<string, string>} dependencies
+ */
+
+
+/**
+ * @typedef {Object} LockPackageItem
+ * @property {string} [name]
+ * @property {string}[from]
+ * @property {string} version
+ * @property {string}resolved
+ * @property {string} integrity
+ * @property {boolean} dev
+ * @property {Object.<string, string>} requires
+ */
+
+
+/**
+ * @typedef {Object} PackageLock
+ * @property {string} name
+ * @property {string} version 
+ * @property {Object.<string, LockPackageItem>} dependencies
+ */
+
+
+
+
+
+
+/**
+ * 
+ * @param {Array<string>} depsStrings 
+ * @param {Array<LockPackageItem>} lockpackages
+ */
 function getRequiresPackages(depsStrings, lockpackages) {
   if (!depsStrings.length) {
     return;
   }
-  return depsStrings.map(key => {
-    var _package = lockpackages[key];
-    if (_package && _package.requires) {
-      Object.keys(_package.requires).map(dep => {
-        if (dep) {
-          return dep;
-        }
-      })
+  /**
+   * @type {Array<string>}
+   */
+  let newDepStrings = [];
+  depsStrings.map(key => {
+    const _package = lockpackages.find(p => p.name === key)
+    if (_package) {
+
+      if (_package.requires) {
+        // console.log('find package: ', key)
+        Object.keys(_package.requires).map(i => newDepStrings.push(i));
+      }
     }
   })
+  return newDepStrings;
 }
 
-var buildMatrixFromPackageJsonAndLock = function (package_json, package_json_lock, showDev) {
-  /* if (!showDev) {
-    showDev = false;
-  } */
-  var deps = [],
+/**
+ * 
+ * @param {Package} package_json 
+ * @param {PackageLock} package_json_lock 
+ */
+var buildMatrixFromPackageJsonAndLock = function (package_json, package_json_lock) {
+
+  /**
+   * @type {Array<string>}
+   */
+  let deps = [],
     requiredDeps = [],
     depsAndRequiredDeps = [],
-    lockDeps = [],
-    packages = [],
-    lock_Packages = [],
+    lockDeps = [];
+
+  /**
+   * @type {Array<LockPackageItem>}
+   */
+  let packages = [];
+
+  /**
+   * @type {Array<LockPackageItem>}
+   */
+  let lock_Packages = [],
     requiredPackages = [],
     packagesAndrequiredPackages = [];
 
-  var devDepsCount = 0, depsCount = 0;
+  var devDepsCount = 0,
+    depsCount = 0;
 
 
   deps = Object.keys(package_json.dependencies);
@@ -46,14 +103,14 @@ var buildMatrixFromPackageJsonAndLock = function (package_json, package_json_loc
 
   lock_Packages = lockDeps.map(ld => {
     if (ld) {
-      var packageFromLock = package_json_lock.dependencies[ld];
-      packageFromLock.name = ld;
-      if (packageFromLock.version.match(/git/) && packageFromLock.from) {
-        packageFromLock.version = packageFromLock.from.split('#')[1];
+      var pItem = package_json_lock.dependencies[ld];
+      pItem.name = ld;
+      if (pItem.version.match(/git/) && pItem.from) {
+        pItem.version = pItem.from.split('#')[1];
       }
 
-      if (packageFromLock) {
-        return packageFromLock;
+      if (pItem) {
+        return pItem;
       }
     }
   })
@@ -67,29 +124,42 @@ var buildMatrixFromPackageJsonAndLock = function (package_json, package_json_loc
 
     // check if deps from package.json in lock
     packages = lock_Packages.filter(lp => deps.includes(lp.name));
-    console.log('dependencies', packages);
+    console.log('depsStrings', deps);
+
+
 
     // check if package requires other packages
-    packages.map(_package => {
-      if (_package.requires) {
-        Object.keys(_package.requires).map(item => requiredDeps.push(item));
+    packages.map(p => {
+      if (p.requires) {
+        const newArray = Object.keys(p.requires)
+        newArray.map(i => requiredDeps.push(i));
       }
     });
+
+
+    /* const nextDeps = getRequiresPackages(requiredDeps, lock_Packages);
+    nextDeps.map(i => requiredDeps.push(i));
+    const nextDeps2 = getRequiresPackages(nextDeps, lock_Packages);
+    nextDeps2.map(i => requiredDeps.push(i)); */
 
 
     //check for unique requiredDeps
     const uniqueSet3 = new Set(requiredDeps);
     requiredDeps = Array.from(uniqueSet3);
 
+    console.log('requiredDepsStrings', requiredDeps)
+
 
     requiredPackages = lock_Packages.filter(item => requiredDeps.includes(item.name));
-    console.log('requiredDependencies', requiredPackages)
+    //console.log('requiredPackages', requiredPackages)
 
 
     depsAndRequiredDeps = [...deps, ...requiredDeps];
     //check for unique depsAndRequiredDeps
     const uniqueSet4 = new Set(depsAndRequiredDeps);
     depsAndRequiredDeps = Array.from(uniqueSet4);
+
+
 
     packagesAndrequiredPackages = lock_Packages.filter(item => depsAndRequiredDeps.includes(item.name));
 
@@ -109,15 +179,13 @@ var buildMatrixFromPackageJsonAndLock = function (package_json, package_json_loc
     console.log('There are no dependencies!')
     return;
   } else {
-    package_json.isMain = true;
     //packages.unshift(package_json);
 
     var indexByName = {}
     var packageInfo = {};
     var matrix = [];
+    const _matrix = [];
     var n = 0;
-    var v = 0;
-    var replaces = {};
 
     // generate packageInfo
     // Compute a unique index for each package name.
@@ -140,24 +208,37 @@ var buildMatrixFromPackageJsonAndLock = function (package_json, package_json_loc
       if (p) {
         var source = indexByName[p.name];
 
-        var row = matrix[source];
+        /* matrix[source] = new Array(n).fill(0, 0, n);
 
+        if (p.requires) {
+          Object.keys(p.requires).map(p => {
+            const pIndex = indexByName[p];
+            if (matrix[pIndex]) {
+              matrix[pIndex]++;
+            }
+          })
+        } */
+
+        let row, _row;
         if (!row) {
-          row = matrix[source] = [];
-          for (var i = -1; ++i < n;) row[i] = 0;
-
-          console.log(row)
+          row = matrix[source] = new Array(n).fill(0, 0, n);
+        }
+        if (!_row) {
+          //_row = _matrix[p.name] = new Array(n).fill(0, 0, n);
+          _row = _matrix[p.name] = [];
         }
         for (const packageName in p.requires) {
           row[indexByName[packageName]]++;
+          //_row[indexByName[packageName]].push(packageName);
+          _matrix[p.name].push(packageName)
         }
       }
     });
-
-    //console.log(matrix)
+    console.log(_matrix)
+    console.log(matrix)
 
     // add small increment to equally weighted dependencies to force order
-    matrix.forEach(function (row, index) {
+    /* matrix.forEach(function (row, index) {
       var increment = 0.001;
       for (var i = -1; ++i < n;) {
         var ii = (i + index) % n;
@@ -166,8 +247,10 @@ var buildMatrixFromPackageJsonAndLock = function (package_json, package_json_loc
           increment += 0.001;
         }
       }
-    });
+    }); */
 
+
+    console.log('packageInfo', packageInfo)
 
 
     return {

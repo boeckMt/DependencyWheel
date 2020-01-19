@@ -1,6 +1,22 @@
 d3.chart = d3.chart || {};
 
 /**
+ * define not known props
+ */
+d3.chord = d3.chord;
+d3.descending = d3.descending;
+d3.select = d3.select;
+d3.arc = d3.arc;
+d3.rgb = d3.rgb;
+d3.ribbon = d3.ribbon;
+
+/**
+ * @typedef {Object} PackageInfoItem
+ * @property {string} name
+ * @property {string} version
+ */
+
+/**
  * Dependency wheel chart for d3.js
  *
  * Usage:
@@ -44,8 +60,13 @@ d3.chart.dependencyWheel = function (options) {
 
   function chart(selection) {
     selection.each(function (data) {
-
+      /**
+       * @type {Array<number[]>}
+       */
       var matrix = data.matrix;
+      /**
+       * @type {Object.<number,PackageInfoItem>}
+       */
       var packageNames = data.packageNames;
       var radius = width / 2 - margin;
 
@@ -76,7 +97,9 @@ d3.chart.dependencyWheel = function (options) {
         if (packageNames[d.index].name.match(/@ukis/)) {
           index = 6;
         }
-        return "hsl(" + parseInt(((packageNames[d.index].name[index].charCodeAt() - 97) / 26) * 360, 10) + ",90%,70%)";
+
+        const color = ((packageNames[d.index].name[index].charCodeAt(index) - 97) / 26) * 360;
+        return "hsl(" + parseInt(color.toString(), 10) + ",90%,70%)";
       };
 
       // Returns an event handler for fading a given chord group.
@@ -84,7 +107,8 @@ d3.chart.dependencyWheel = function (options) {
         return function (g, i) {
           gEnter.selectAll(".chord")
             .filter(function (d) {
-              return d.source.index != i && d.target.index != i;
+              // return d.source.index != i && d.target.index != i; this is selecting other deps not the real deps!!!!!!
+              return d.source.index != i;
             })
             .transition()
             .style("opacity", opacity);
@@ -94,9 +118,11 @@ d3.chart.dependencyWheel = function (options) {
               if (d.source.index == i) {
                 groups.push(d.target.index);
               }
+              /* 
+              // this is selecting other deps not the real deps!!!!!!
               if (d.target.index == i) {
                 groups.push(d.source.index);
-              }
+              } */
             });
           groups.push(i);
           var length = groups.length;
@@ -115,7 +141,7 @@ d3.chart.dependencyWheel = function (options) {
       var chordResult = chord(matrix);
 
       var rootGroup = chordResult.groups[0];
-      var rotation = - (rootGroup.endAngle - rootGroup.startAngle) / 2 * (180 / Math.PI);
+      var rotation = -(rootGroup.endAngle - rootGroup.startAngle) / 2 * (180 / Math.PI);
 
       var g = gEnter.selectAll("g.group")
         .remove().exit()
@@ -135,17 +161,23 @@ d3.chart.dependencyWheel = function (options) {
         .on("mouseout", fade(1));
 
       g.append("svg:text")
-        .each(function (d) { d.angle = (d.startAngle + d.endAngle) / 2; })
+        .each(function (d) {
+          d.angle = (d.startAngle + d.endAngle) / 2;
+        })
         .attr("dy", ".35em")
         .attr("class", "text-name")
-        .attr("text-anchor", function (d) { return d.angle > Math.PI ? "end" : null; })
+        .attr("text-anchor", function (d) {
+          return d.angle > Math.PI ? "end" : null;
+        })
         .attr("transform", function (d) {
           return "rotate(" + (d.angle * 180 / Math.PI - 90) + ")" +
             "translate(" + (radius + 26) + ")" +
             (d.angle > Math.PI ? "rotate(180)" : "");
         })
         .style("cursor", "pointer")
-        .text(function (d) { return packageNames[d.index].name + '| ' + packageNames[d.index].version; })
+        .text(function (d) {
+          return packageNames[d.index].name + '| ' + packageNames[d.index].version;
+        })
         .on("mouseover", fade(0.1))
         .on("mouseout", fade(1))
 
@@ -154,8 +186,12 @@ d3.chart.dependencyWheel = function (options) {
         .data(chordResult)
         .enter().append("svg:path")
         .attr("class", "chord")
-        .style("stroke", function (d) { return d3.rgb(fill(d.source)).darker(); })
-        .style("fill", function (d) { return fill(d.source); })
+        .style("stroke", function (d) {
+          return d3.rgb(fill(d.source)).darker();
+        })
+        .style("fill", function (d) {
+          return fill(d.source);
+        })
         .attr("d", d3.ribbon().radius(radius))
         .attr("transform", function (d) {
           return "rotate(" + rotation + ")";
