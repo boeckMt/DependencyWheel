@@ -5,7 +5,7 @@ This experiment visualizes package dependencies using an interactive disc. Each 
 
 Interact with DependencyWheels, see examples, and build your own at [http://fzaninotto.github.com/DependencyWheel](http://fzaninotto.github.com/DependencyWheel).
 
-![The Dependency Wheel of the sylius/sylius project](http://redotheweb.com/DependencyWheel/img/dependency_chord.gif)
+![The Dependency Wheel of the sylius/sylius project](http://redotheweb.com/DependencyWheel/img/ukis-libraries-dependencies.gif)
 
 ## Adjustment
 - this Project is ajusted to work with npm package.json and package-lock.json
