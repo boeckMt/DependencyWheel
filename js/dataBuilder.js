@@ -195,7 +195,8 @@ var buildMatrixFromPackageJsonAndLock = function (package_json, package_json_loc
         if (!(packageName in indexByName)) {
           const info = {
             name: packageName,
-            version: p.version
+            version: p.version,
+            sourceDep: deps.includes(packageName)
           };
           packageInfo[n] = info;
           indexByName[packageName] = n++;

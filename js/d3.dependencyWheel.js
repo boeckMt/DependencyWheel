@@ -14,6 +14,7 @@ d3.ribbon = d3.ribbon;
  * @typedef {Object} PackageInfoItem
  * @property {string} name
  * @property {string} version
+ * @property {string} sourceDep
  */
 
 /**
@@ -55,8 +56,10 @@ d3.chart.dependencyWheel = function (options) {
     width = window.innerHeight
   }
   console.log(window.innerWidth, window.innerHeight)
-  var margin = 260;
+  var margin = 200;
   var padding = 0.08;
+  const colorSource = "hsl(199, 61%, 50%)";
+  const colorTarget = "hsl(50, 61%, 50%)"
 
   function chart(selection) {
     selection.each(function (data) {
@@ -75,13 +78,36 @@ d3.chart.dependencyWheel = function (options) {
         .padAngle(padding)
         .sortSubgroups(d3.descending);
 
+
+      const chartPlaceholder = d3.select(this);
       // Select the svg element, if it exists.
-      var svg = d3.select(this).selectAll("svg").remove().exit().data([data]);
+      const svg = chartPlaceholder.selectAll("svg").remove().exit().data([data]);
+
+      // create legend
+      var LegendEnter = chartPlaceholder.append("svg:svg")
+        .attr("class", "legend")
+        .attr("width", width / 4)
+        .attr("height", 60)
+        //first x then y
+        .attr("transform", "translate(" + (0) + "," + (10) + ")");
+      // Handmade legend
+      LegendEnter
+        .append("circle").attr("cx", 10).attr("cy", 10).attr("r", 6).style("fill", colorSource);
+      LegendEnter
+        .append("circle").attr("cx", 10).attr("cy", 30).attr("r", 6).style("fill", colorTarget);
+      LegendEnter
+        .append("text").attr("x", 20).attr("y", 10).text("Dependencies from Package").style("font-size", "15px").attr("alignment-baseline", "middle");
+      LegendEnter
+        .append("text").attr("x", 20).attr("y", 30).text("Required - fetched from Package-lock").style("font-size", "15px").attr("alignment-baseline", "middle");
+      LegendEnter
+        .append("text").attr("x", 10).attr("y", 50).text("Peer-Dependencies are not calculated!").style("font-size", "15px").attr("alignment-baseline", "middle")
+      // ---------------------------------
+
 
       // Otherwise, create the skeletal chart.
       var gEnter = svg.enter().append("svg:svg")
         .attr("width", width)
-        .attr("height", width)
+        .attr("height", width - 5)
         .attr("class", "dependencyWheel")
         .append("g")
         .attr("transform", "translate(" + (width / 2) + "," + (width / 2) + ")");
@@ -90,46 +116,58 @@ d3.chart.dependencyWheel = function (options) {
         .innerRadius(radius)
         .outerRadius(radius + 20);
 
-      var fill = function (d) {
+      // function to fill the graph
+      const fill = function (d) {
         var index = 0;
-        if (d.index === 0) return '#ccc';
+        // if (d.index === 0) return '#ccc';
 
-        if (packageNames[d.index].name.match(/@ukis/)) {
+        // color all packages with are source dependencies with another color
+        if (packageNames[d.index].name && packageNames[d.index].sourceDep) {
           index = 6;
         }
 
-        const color = ((packageNames[d.index].name[index].charCodeAt(index) - 97) / 26) * 360;
-        return "hsl(" + parseInt(color.toString(), 10) + ",90%,70%)";
+        // const color = ((packageNames[d.index].name[index].charCodeAt(index) - 97) / 26) * 360;
+        // const colorNumber = parseInt(color.toString(), 10);
+        // return "hsl(colorNumber, 100%, 29%)";
+        if (index === 0) {
+          return colorTarget;
+        } else {
+          return colorSource;
+        }
       };
 
       // Returns an event handler for fading a given chord group.
       var fade = function (opacity) {
         return function (g, i) {
+
+          // set opacity of graph (arcs) 
           gEnter.selectAll(".chord")
             .filter(function (d) {
-              // return d.source.index != i && d.target.index != i; this is selecting other deps not the real deps!!!!!!
+              // return d.source.index != i && d.target.index != i; // this is selecting other deps not the real deps!!!!!!
               return d.source.index != i;
             })
             .transition()
             .style("opacity", opacity);
-          var groups = [];
+
+
+          // set opacity of text (deps) 
+          var sourceGroups = [];
           gEnter.selectAll(".chord")
             .filter(function (d) {
               if (d.source.index == i) {
-                groups.push(d.target.index);
+                sourceGroups.push(d.target.index);
               }
-              /* 
               // this is selecting other deps not the real deps!!!!!!
-              if (d.target.index == i) {
-                groups.push(d.source.index);
+              /* if (d.target.index == i) {
+                sourceGroups.push(d.target.index);
               } */
             });
-          groups.push(i);
-          var length = groups.length;
+          sourceGroups.push(i);
+          var length = sourceGroups.length;
           gEnter.selectAll('.group')
             .filter(function (d) {
               for (var i = 0; i < length; i++) {
-                if (groups[i] == d.index) return false;
+                if (sourceGroups[i] == d.index) return false;
               }
               return true;
             })
@@ -175,11 +213,13 @@ d3.chart.dependencyWheel = function (options) {
             (d.angle > Math.PI ? "rotate(180)" : "");
         })
         .style("cursor", "pointer")
-        .text(function (d) {
-          return packageNames[d.index].name + '| ' + packageNames[d.index].version;
+        .html(function (d) {
+          return `${packageNames[d.index].name}
+          <title>${packageNames[d.index].name} - v${packageNames[d.index].version}</title>
+          `;
         })
         .on("mouseover", fade(0.1))
-        .on("mouseout", fade(1))
+        .on("mouseout", fade(1));
 
       gEnter.selectAll("path.chord")
         .remove().exit()
